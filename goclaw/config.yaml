@@ -2,6 +2,7 @@
 name: GoClaw Gateway
 version: "1.0.0"
 slug: goclaw
+image: ghcr.io/imcvampire/goclaw-ha-addon
 description: >-
   PostgreSQL multi-tenant AI agent gateway with WebSocket RPC, HTTP API,
   and browser automation. Connects to TimescaleDB addon for PostgreSQL
