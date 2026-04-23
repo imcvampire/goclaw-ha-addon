@@ -1,0 +1,55 @@
+# Local test harness for the GoClaw HA addon.
+# Simulates the TimescaleDB addon (postgres) + optional Redis addon.
+#
+# Usage (from the goclaw/ addon directory):
+#   docker compose -f .tests/docker-compose.test.yaml up --build
+#   # Dashboard: http://localhost:18790
+#
+# With Redis:
+#   cp .tests/test-options-redis.json .tests/test-options.json
+#   docker compose -f .tests/docker-compose.test.yaml --profile redis up --build
+#
+# Tear down:
+#   docker compose -f .tests/docker-compose.test.yaml --profile redis down -v
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_USER: goclaw
+      POSTGRES_PASSWORD: goclaw
+      POSTGRES_DB: goclaw
+    volumes:
+      - pg-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goclaw -d goclaw"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    profiles:
+      - redis
+
+  goclaw:
+    build:
+      context: ..
+      args:
+        BUILD_FROM: ghcr.io/nextlevelbuilder/goclaw:latest
+    ports:
+      - "18790:18790"
+      - "9222:9222"
+    volumes:
+      - goclaw-data:/data
+      - ./test-options.json:/data/options.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  pg-data:
+  goclaw-data:
