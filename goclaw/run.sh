@@ -65,13 +65,19 @@ if [ -n "$REDIS_HOST" ]; then
 fi
 
 # ── Browser (headless Chromium) ──
+# In HA add-on containers there is no system D-Bus and no Google GCM access,
+# so Chromium spams ERROR logs at startup for unrelated subsystems
+# (UPower, kwallet, accessibility, push notifications). We both (a) disable
+# the background services that try to use them and (b) filter the remaining
+# noise out of stderr so the add-on log stays readable.
 CHROME_PID=""
 if [ "$ENABLE_BROWSER" = "true" ]; then
     CHROME_BIN=$(command -v chromium-browser 2>/dev/null || command -v chromium 2>/dev/null || true)
     if [ -n "$CHROME_BIN" ]; then
         echo "Starting headless Chromium..."
+        CHROME_LOG_FILTER='dbus/(bus|object_proxy)\.cc|gcm/engine/registration_request\.cc|Failed to connect to the bus|DEPRECATED_ENDPOINT'
         "$CHROME_BIN" \
-            --headless \
+            --headless=new \
             --no-sandbox \
             --remote-debugging-address=0.0.0.0 \
             --remote-debugging-port=9222 \
@@ -79,7 +85,19 @@ if [ "$ENABLE_BROWSER" = "true" ]; then
             --disable-gpu \
             --disable-dev-shm-usage \
             --disable-software-rasterizer \
-            --disable-extensions &
+            --disable-extensions \
+            --disable-background-networking \
+            --disable-component-update \
+            --disable-default-apps \
+            --disable-sync \
+            --disable-translate \
+            --disable-features=MediaSessionService,GlobalMediaControls,OptimizationHints,Translate \
+            --no-first-run \
+            --no-default-browser-check \
+            --no-pings \
+            --metrics-recording-only \
+            --log-level=2 \
+            2> >(grep --line-buffered -vE "$CHROME_LOG_FILTER" >&2) &
         CHROME_PID=$!
         export GOCLAW_BROWSER_REMOTE_URL="ws://localhost:9222"
 
