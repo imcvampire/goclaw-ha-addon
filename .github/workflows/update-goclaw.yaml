@@ -54,7 +54,8 @@ jobs:
             addon_rev="${BASH_REMATCH[2]}"
           elif [[ "$current" =~ ^([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             goclaw_version="${BASH_REMATCH[1]}"
-            addon_rev=0
+            # Treat a bare upstream version as addon revision 1.
+            addon_rev=1
           else
             echo "Unrecognized version format: $current" >&2
             exit 1
@@ -68,6 +69,7 @@ jobs:
         env:
           LATEST: ${{ steps.latest.outputs.version }}
           CURRENT: ${{ steps.current.outputs.goclaw_version }}
+          ADDON_REV: ${{ steps.current.outputs.addon_rev }}
         run: |
           if [[ "$LATEST" == "$CURRENT" ]]; then
             echo "Already on latest GoClaw ($LATEST); nothing to do."
@@ -80,8 +82,10 @@ jobs:
             echo "needs_update=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # Preserve the current addon revision across upstream bumps so the
+          # suffix only changes when *this* addon's packaging changes.
           echo "needs_update=true" >> "$GITHUB_OUTPUT"
-          echo "new_version=${LATEST}-1" >> "$GITHUB_OUTPUT"
+          echo "new_version=${LATEST}-${ADDON_REV}" >> "$GITHUB_OUTPUT"
 
       - name: Apply updates
         if: steps.decide.outputs.needs_update == 'true'
