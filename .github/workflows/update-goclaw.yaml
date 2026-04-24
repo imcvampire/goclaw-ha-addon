@@ -25,7 +25,13 @@ jobs:
           # Public repo read access; the default token works.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag=$(gh api /repos/nextlevelbuilder/goclaw/releases --paginate \
+          # NOTE: do NOT use `--paginate` together with `--jq` here. With
+          # `--paginate`, the jq filter is applied to each page separately and
+          # the results are concatenated, which yields multiple tag names
+          # (e.g. one per page) and breaks `$GITHUB_OUTPUT` with an
+          # "Invalid format" error. Fetching a single page of up to 100 is
+          # more than enough to find the latest stable release.
+          tag=$(gh api '/repos/nextlevelbuilder/goclaw/releases?per_page=100' \
             --jq '[.[]
                     | select(.draft == false)
                     | select(.prerelease == false)
