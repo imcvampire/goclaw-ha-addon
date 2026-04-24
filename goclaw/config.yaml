@@ -1,12 +1,10 @@
 ---
 name: GoClaw Gateway
-version: "3.9.2-3"
+version: "3.11.0-1"
 slug: goclaw
 image: ghcr.io/imcvampire/goclaw-ha-addon
 description: >-
-  PostgreSQL multi-tenant AI agent gateway with WebSocket RPC, HTTP API,
-  and browser automation. Connects to TimescaleDB addon for PostgreSQL
-  and optionally to a Redis addon for caching.
+  PostgreSQL multi-tenant AI agent gateway with WebSocket RPC, HTTP API, and browser automation. Connects to TimescaleDB addon for PostgreSQL and optionally to a Redis addon for caching.
 url: https://github.com/nextlevelbuilder/goclaw
 arch:
   - aarch64
