@@ -6,7 +6,9 @@
 FROM ghcr.io/nextlevelbuilder/goclaw:v3.9.2
 
 RUN apk add --no-cache \
-    bash jq chromium nss freetype harfbuzz ttf-freefont
+    bash jq \
+    chromium nss freetype harfbuzz ttf-freefont \
+    nodejs npm
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh && sed -i 's/\r$//' /run.sh

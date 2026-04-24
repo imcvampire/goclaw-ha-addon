@@ -20,13 +20,19 @@ TRACE_VERBOSE=$(jq -r '.trace_verbose // false' "$CONFIG_PATH")
 mkdir -p /data/goclaw/skills /data/goclaw/workspace
 
 # ── Runtime paths (from docker-entrypoint.sh) ──
+# Install targets are ephemeral (wiped every restart/upgrade — always clean
+# against the current base image's Python/Node ABI). Package caches live on
+# the persistent /data volume so the boot-time reinstall is fast.
 RUNTIME_DIR="/app/data/.runtime"
-mkdir -p "$RUNTIME_DIR/pip" "$RUNTIME_DIR/npm-global/lib" "$RUNTIME_DIR/pip-cache" 2>/dev/null || true
+CACHE_DIR="/data/goclaw/.cache"
+mkdir -p "$RUNTIME_DIR/pip" "$RUNTIME_DIR/npm-global/lib" 2>/dev/null || true
+mkdir -p "$CACHE_DIR/pip" "$CACHE_DIR/npm" 2>/dev/null || true
 export PYTHONPATH="$RUNTIME_DIR/pip:${PYTHONPATH:-}"
 export PIP_TARGET="$RUNTIME_DIR/pip"
 export PIP_BREAK_SYSTEM_PACKAGES=1
-export PIP_CACHE_DIR="$RUNTIME_DIR/pip-cache"
+export PIP_CACHE_DIR="$CACHE_DIR/pip"
 export NPM_CONFIG_PREFIX="$RUNTIME_DIR/npm-global"
+export NPM_CONFIG_CACHE="$CACHE_DIR/npm"
 export NODE_PATH="/usr/local/lib/node_modules:$RUNTIME_DIR/npm-global/lib/node_modules:${NODE_PATH:-}"
 export PATH="$RUNTIME_DIR/npm-global/bin:$RUNTIME_DIR/pip/bin:$PATH"
 
@@ -120,6 +126,42 @@ cleanup() {
     wait 2>/dev/null || true
 }
 trap cleanup SIGTERM SIGINT
+
+# ── Reinstall skill dependencies ──
+# Install targets ($RUNTIME_DIR) are ephemeral, so each boot we re-install
+# deps declared by each skill. Caches live on /data so this is fast after
+# the first boot. Skills opt in by shipping a requirements.txt (Python) or
+# package.json (Node) at the top of their skill directory.
+reinstall_skill_deps() {
+    [ -d "$GOCLAW_SKILLS_DIR" ] || return 0
+    local any=0
+
+    for skill in "$GOCLAW_SKILLS_DIR"/*/; do
+        [ -d "$skill" ] || continue
+        local name
+        name=$(basename "$skill")
+
+        if [ -f "${skill}requirements.txt" ]; then
+            echo "  [pip] ${name}"
+            pip install --quiet --disable-pip-version-check \
+                -r "${skill}requirements.txt" \
+                || echo "  WARNING: pip install failed for ${name}"
+            any=1
+        fi
+
+        if [ -f "${skill}package.json" ]; then
+            echo "  [npm] ${name}"
+            (cd "$skill" && npm install --silent --no-audit --no-fund --no-progress) \
+                || echo "  WARNING: npm install failed for ${name}"
+            any=1
+        fi
+    done
+
+    [ "$any" = "0" ] && echo "  (no skill deps to install)"
+}
+
+echo "Reinstalling skill dependencies..."
+reinstall_skill_deps
 
 # ── Database upgrade ──
 # Applies schema migrations + data hooks. Equivalent to running the
