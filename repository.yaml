@@ -1,4 +1,4 @@
 # https://developers.home-assistant.io/docs/apps/repository#repository-configuration
-name: "imcvampire's GoClaw Add-ons"
+name: "imcvampire's GoClaw Add-on"
 url: 'https://github.com/imcvampire/goclaw-ha-addon'
 maintainer: imcvampire
