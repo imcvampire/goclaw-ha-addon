@@ -3,9 +3,16 @@
 The addon version follows the `<goclaw version>-<addon version>` format,
 e.g. `3.10.0-1` means goclaw `v3.10.0`, addon revision `1`.
 
-## 3.10.0-1
+## 3.9.2-2
 
-- Bump upstream GoClaw to `v3.10.0`
+- Fail the add-on start when `goclaw upgrade` fails, instead of
+  silently continuing with a possibly inconsistent schema. A failed
+  upgrade now prints a clear error and exits non-zero so Home Assistant
+  surfaces it.
+
+## 3.9.2-1
+
+- Bump upstream GoClaw to `v3.9.2`
 - Adopt `<goclaw version>+<addon version>` versioning scheme
 - Pin Dockerfile base image to a specific GoClaw release tag
 

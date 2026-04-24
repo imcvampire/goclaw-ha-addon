@@ -122,8 +122,20 @@ cleanup() {
 trap cleanup SIGTERM SIGINT
 
 # ── Database upgrade ──
+# Applies schema migrations + data hooks. Equivalent to running the
+# upstream docker-compose.upgrade.yml overlay. Safe to run on every
+# start: it's a no-op when the DB is already up-to-date.
+# A real failure here means the DB is in an inconsistent state, so we
+# refuse to start the gateway instead of silently serving on a broken
+# schema.
 echo "Running database upgrade..."
-/app/goclaw upgrade || echo "Upgrade notice: database may already be up-to-date"
+if ! /app/goclaw upgrade; then
+    echo "ERROR: database upgrade failed — see output above."
+    echo "  The gateway will not start. Check Postgres connectivity,"
+    echo "  credentials, and migration logs, or roll back the add-on"
+    echo "  to the previous version."
+    exit 1
+fi
 
 # ── Start GoClaw ──
 echo "Starting GoClaw Gateway on :18790..."
