@@ -1,0 +1,135 @@
+name: Update GoClaw Upstream
+
+on:
+  schedule:
+    # Daily at 06:00 UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    name: Check upstream GoClaw release
+    if: github.repository == 'imcvampire/goclaw-ha-addon'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Get latest GoClaw release
+        id: latest
+        env:
+          # Public repo read access; the default token works.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag=$(gh api /repos/nextlevelbuilder/goclaw/releases --paginate \
+            --jq '[.[]
+                    | select(.draft == false)
+                    | select(.prerelease == false)
+                    | select(.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))]
+                  | .[0].tag_name // ""')
+          if [[ -z "$tag" ]]; then
+            echo "Could not find a stable GoClaw release." >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Read current addon version
+        id: current
+        run: |
+          # Version format: <MAJOR.MINOR.PATCH>-<ADDON_REV>
+          current=$(yq '.version' goclaw/config.yaml)
+          if [[ "$current" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)$ ]]; then
+            goclaw_version="${BASH_REMATCH[1]}"
+            addon_rev="${BASH_REMATCH[2]}"
+          elif [[ "$current" =~ ^([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            goclaw_version="${BASH_REMATCH[1]}"
+            addon_rev=0
+          else
+            echo "Unrecognized version format: $current" >&2
+            exit 1
+          fi
+          echo "full=$current" >> "$GITHUB_OUTPUT"
+          echo "goclaw_version=$goclaw_version" >> "$GITHUB_OUTPUT"
+          echo "addon_rev=$addon_rev" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to bump
+        id: decide
+        env:
+          LATEST: ${{ steps.latest.outputs.version }}
+          CURRENT: ${{ steps.current.outputs.goclaw_version }}
+        run: |
+          if [[ "$LATEST" == "$CURRENT" ]]; then
+            echo "Already on latest GoClaw ($LATEST); nothing to do."
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          newest=$(printf '%s\n%s\n' "$LATEST" "$CURRENT" | sort -V | tail -n1)
+          if [[ "$newest" != "$LATEST" ]]; then
+            echo "Upstream $LATEST is not newer than current $CURRENT; skipping."
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "needs_update=true" >> "$GITHUB_OUTPUT"
+          echo "new_version=${LATEST}-1" >> "$GITHUB_OUTPUT"
+
+      - name: Apply updates
+        if: steps.decide.outputs.needs_update == 'true'
+        env:
+          NEW_VERSION: ${{ steps.decide.outputs.new_version }}
+          LATEST_TAG: ${{ steps.latest.outputs.tag }}
+          OLD_VERSION: ${{ steps.current.outputs.full }}
+        run: |
+          yq -i ".version = \"${NEW_VERSION}\"" goclaw/config.yaml
+          sed -i -E \
+            "s|^FROM ghcr.io/nextlevelbuilder/goclaw:.*$|FROM ghcr.io/nextlevelbuilder/goclaw:${LATEST_TAG}|" \
+            goclaw/Dockerfile
+
+          python3 - <<'PY'
+          import os, re, pathlib
+          new_version = os.environ["NEW_VERSION"]
+          latest_tag = os.environ["LATEST_TAG"]
+          path = pathlib.Path("goclaw/CHANGELOG.md")
+          text = path.read_text()
+          entry = (
+              f"## {new_version}\n\n"
+              f"- Bump upstream GoClaw to `{latest_tag}`\n\n"
+          )
+          new_text, n = re.subn(r"^## ", entry + "## ", text, count=1, flags=re.MULTILINE)
+          if n == 0:
+              new_text = text.rstrip() + "\n\n" + entry
+          path.write_text(new_text)
+          PY
+
+          echo "--- Updated files ---"
+          git diff --stat
+
+      - name: Create pull request
+        if: steps.decide.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          # Use a PAT (GOCLAW_BUMP_PAT) if you need the PR to trigger the
+          # Builder workflow; otherwise the default GITHUB_TOKEN is used and
+          # the resulting PR will not trigger other workflows.
+          token: ${{ secrets.GOCLAW_BUMP_PAT || secrets.GITHUB_TOKEN }}
+          commit-message: "chore(goclaw): bump upstream to ${{ steps.latest.outputs.tag }}"
+          branch: bot/bump-goclaw-${{ steps.latest.outputs.version }}
+          delete-branch: true
+          title: "chore(goclaw): bump upstream to ${{ steps.latest.outputs.tag }}"
+          body: |
+            Automated bump of the upstream GoClaw image.
+
+            - Upstream release: [`${{ steps.latest.outputs.tag }}`](https://github.com/nextlevelbuilder/goclaw/releases/tag/${{ steps.latest.outputs.tag }})
+            - Addon version: `${{ steps.current.outputs.full }}` → `${{ steps.decide.outputs.new_version }}`
+
+            Changes:
+            - Update `goclaw/Dockerfile` `FROM` to `ghcr.io/nextlevelbuilder/goclaw:${{ steps.latest.outputs.tag }}`
+            - Update `goclaw/config.yaml` `version` to `${{ steps.decide.outputs.new_version }}`
+            - Prepend release notes to `goclaw/CHANGELOG.md`
+          labels: |
+            automated
+            dependencies

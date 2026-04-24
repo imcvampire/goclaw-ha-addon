@@ -1,5 +1,14 @@
 # Changelog
 
+The addon version follows the `<goclaw version>-<addon version>` format,
+e.g. `3.10.0-1` means goclaw `v3.10.0`, addon revision `1`.
+
+## 3.10.0-1
+
+- Bump upstream GoClaw to `v3.10.0`
+- Adopt `<goclaw version>+<addon version>` versioning scheme
+- Pin Dockerfile base image to a specific GoClaw release tag
+
 ## 1.0.0
 
 - Initial release
