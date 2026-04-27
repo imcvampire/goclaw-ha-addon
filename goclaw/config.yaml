@@ -1,6 +1,6 @@
 ---
 name: GoClaw Gateway
-version: "3.11.0-3"
+version: "3.11.3-4"
 slug: goclaw
 image: ghcr.io/imcvampire/goclaw-ha-addon
 description: >-

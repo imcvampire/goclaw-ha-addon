@@ -49,7 +49,7 @@ export GOCLAW_PORT=18790
 TOKEN_FILE=/data/goclaw/gateway.token
 if [ -z "$GATEWAY_TOKEN" ]; then
     if [ ! -f "$TOKEN_FILE" ]; then
-        head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$TOKEN_FILE"
+        openssl rand -hex 32 > "$TOKEN_FILE"
         chmod 600 "$TOKEN_FILE"
         echo "Generated new gateway token at $TOKEN_FILE"
     fi

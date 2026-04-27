@@ -3,6 +3,15 @@
 The addon version follows the `<goclaw version>-<addon version>` format,
 e.g. `3.10.0-1` means goclaw `v3.10.0`, addon revision `1`.
 
+## 3.11.3-4
+
+- Bump upstream GoClaw to `v3.11.3` and switch base image from
+  `:v3.11.0` (latest variant) to `:v3.11.3-full`. The `-full` variant
+  ships Python + Node runtimes and skill dependencies pre-installed,
+  so the add-on Dockerfile no longer installs `bash`, `nodejs`, or
+  `npm` on top — only `jq` (for HA option parsing) and the Chromium
+  stack remain.
+
 ## 3.11.0-3
 
 - Bump upstream GoClaw to `v3.11.0`

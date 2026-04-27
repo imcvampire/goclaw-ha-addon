@@ -3,10 +3,11 @@
 PostgreSQL multi-tenant AI agent gateway with WebSocket RPC, HTTP API,
 browser automation, and an embedded web dashboard.
 
-This addon extends the pre-built `ghcr.io/nextlevelbuilder/goclaw` image
-with headless Chromium — equivalent to `make up WITH_BROWSER=1 WITH_REDIS=1`.
-It leverages the **TimescaleDB addon** for PostgreSQL and optionally a
-**Redis addon** for caching.
+This addon extends the pre-built `ghcr.io/nextlevelbuilder/goclaw:*-full`
+image (which ships the backend, web UI, Python and Node runtimes, and all
+skill dependencies pre-installed) with headless Chromium — equivalent to
+`make up WITH_BROWSER=1 WITH_REDIS=1`. It leverages the **TimescaleDB
+addon** for PostgreSQL and optionally a **Redis addon** for caching.
 
 ## Prerequisites
 
@@ -131,10 +132,13 @@ built-in backup system.
 
 ## How It Works
 
-The addon uses the pre-built `ghcr.io/nextlevelbuilder/goclaw` Docker
-image as its base (specified in `build.yaml`). On top of that, the
-Dockerfile adds Chromium for browser automation. The HA Supervisor builds
-this automatically when you install the addon — no source compilation needed.
+The addon uses the pre-built `ghcr.io/nextlevelbuilder/goclaw:*-full`
+Docker image as its base (specified in the `Dockerfile`). The `-full`
+variant already includes the backend, embedded web UI, Python and Node
+runtimes, and the bundled skill dependencies, so the add-on Dockerfile
+only adds `jq` (for HA option parsing) and Chromium for browser
+automation. The HA Supervisor builds this automatically when you install
+the addon — no source compilation needed.
 
 PostgreSQL and Redis are provided by their respective HA addons, keeping
 each concern in its own container.
