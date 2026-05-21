@@ -96,7 +96,7 @@ jobs:
         run: |
           yq -i ".version = \"${NEW_VERSION}\"" goclaw/config.yaml
           sed -i -E \
-            "s|^FROM ghcr.io/nextlevelbuilder/goclaw:.*$|FROM ghcr.io/nextlevelbuilder/goclaw:${LATEST_TAG}|" \
+            "s|^FROM ghcr.io/nextlevelbuilder/goclaw:.*$|FROM ghcr.io/nextlevelbuilder/goclaw:${LATEST_TAG}-full|" \
             goclaw/Dockerfile
 
           python3 - <<'PY'
