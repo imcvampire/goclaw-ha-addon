@@ -4,7 +4,7 @@
 # so we only need to add jq (HA option parsing) + Chromium on top.
 # PostgreSQL: via TimescaleDB addon. Redis: via external Redis addon.
 
-FROM ghcr.io/nextlevelbuilder/goclaw:v3.13.2-full
+FROM ghcr.io/nextlevelbuilder/goclaw:v3.14.0-full
 
 RUN apk add --no-cache \
     jq \
