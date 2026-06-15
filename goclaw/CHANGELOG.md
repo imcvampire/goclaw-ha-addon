@@ -3,6 +3,10 @@
 The addon version follows the `<goclaw version>-<addon version>` format,
 e.g. `3.10.0-1` means goclaw `v3.10.0`, addon revision `1`.
 
+## 3.14.0-5
+
+- Bump upstream GoClaw to `v3.14.0`
+
 ## 3.13.2-5
 
 - Bump upstream GoClaw to `v3.13.2`
